@@ -1,15 +1,25 @@
 library(tidyverse)
+library(lubridate)
 library(DBI)
 library(RSQLite)
-library(lubridate)
 
 fp_db <- dbConnect(SQLite(), "fprime.fpdb")
 
 fp_tbl <- db_list_tables(fp_db)
 fp_tbl
 
+n_att <- tbl(fp_db, "nodeAttribute") %>% 
+  collect() %>% 
+  select(nodeAttribute_id=id,
+         att_name = name)
+
 att <- tbl(fp_db, "attributeValue") %>% 
-  collect()
+  collect() %>% 
+  left_join(n_att) %>% 
+  select(-nodeAttribute_id) %>% 
+  spread(att_name, value)
+
+natt <- dbReadTable(fp_db, "nodeAttribute")
 
 trials <- tbl(fp_db, "trial") %>% 
   collect()
@@ -44,8 +54,9 @@ datum <- datum %>%
   left_join(node) %>% 
   arrange(row, col) %>% 
   left_join(trait_ins) %>% 
-  left_join(traits)
+  left_join(traits) %>% 
+  left_join(att) %>% 
+  arrange(row, col) %>% 
+  spread(trait, value)
 
-#write_csv(datum, "meredin_fp_database.csv")
-
-
+write_csv(datum, "meredin_fp_database.csv")
